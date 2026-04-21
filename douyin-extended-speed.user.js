@@ -1,12 +1,18 @@
 // ==UserScript==
 // @name         抖音倍速扩展
-// @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  扩展抖音播放器倍速选项，支持0.1x-16x倍速
-// @author       You
+// @namespace    https://github.com/charlesAcmen/douyin-video-speed-control
+// @version      1.0.0
+// @description  为抖音网页版视频播放器添加 0.1x、0.5x、2.5x 等额外倍速选项
+// @author       charlesAcmen
+// @license      MIT
 // @match        https://www.douyin.com/*
 // @match        https://douyin.com/*
 // @grant        none
+// @run-at       document-end
+// @supportURL   https://github.com/charlesAcmen/douyin-video-speed-control/issues
+// @homepageURL  https://github.com/charlesAcmen/douyin-video-speed-control
+// @downloadURL  https://github.com/charlesAcmen/douyin-video-speed-control/raw/main/douyin-extended-speed.user.js
+// @updateURL    https://github.com/charlesAcmen/douyin-video-speed-control/raw/main/douyin-extended-speed.user.js
 // ==/UserScript==
 
 (function() {
@@ -80,7 +86,10 @@
         addSpeedOptions();
     }
 
-    // 使用事件委托监听倍速选项点击（只处理新增选项，原始选项由播放器自行处理）
+    // 原始播放器自带的倍速ID
+    const originalSpeedIds = ['0.75', '1.0', '1.25', '1.5', '1.75', '2.0', '3.0'];
+
+    // 使用事件委托监听倍速选项点击
     document.addEventListener('click', function(event) {
         // 检查点击的是否是倍速按钮（打开菜单时注入额外选项）
         const playbackRateBtn = event.target.closest('.xgplayer-playback-setting');
@@ -101,27 +110,27 @@
         const speedId = speedItem.getAttribute('data-id');
         if (!speedId) return;
 
-        // 判断是否是新增选项（原始选项由播放器处理，不需要我们干预）
-        const isOriginal = speedWrap.dataset.extended !== 'true' || !speedOptions.find(o => o.id === speedId && !['0.75', '1.0', '1.25', '1.5', '1.75', '2.0', '3.0'].includes(speedId));
+        // 判断是否为新增选项
+        const isNewOption = !originalSpeedIds.includes(speedId);
+        console.log('[抖音倍速扩展] 倍速选项点击:', speedId, '是否新增:', isNewOption);
 
-        // 对于新增选项，需要手动设置倍速
-        const isNewOption = ['0.1', '0.5', '2.5'].includes(speedId);
-        if (isNewOption) {
-            console.log('[抖音倍速扩展] 新增选项点击:', speedId);
+        // 从点击元素向上找对应的播放器和视频
+        const playerEl = speedWrap.closest('.xgplayer');
+        const video = playerEl ? playerEl.querySelector('video') : document.querySelector('video');
+
+        if (isNewOption && video) {
+            // 新增选项：手动设置倍速
+            console.log('[抖音倍速扩展] 手动设置倍速:', speedId);
+            video.playbackRate = parseFloat(speedId);
+
             // 移除其他选项的选中状态
             speedWrap.querySelectorAll('.xgplayer-playratio-item').forEach(item => {
                 item.classList.remove('select');
             });
             speedItem.classList.add('select');
 
-            // 设置播放速度
-            const video = document.querySelector('video');
-            if (video) {
-                video.playbackRate = parseFloat(speedId);
-            }
-
             // 更新显示的倍速文字
-            const playbackSetting = document.querySelector('.xgplayer-setting-playbackRatio');
+            const playbackSetting = playerEl ? playerEl.querySelector('.xgplayer-setting-playbackRatio') : null;
             if (playbackSetting) {
                 playbackSetting.textContent = speedId + 'x';
             }
